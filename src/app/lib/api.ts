@@ -132,6 +132,12 @@ export const adminSettings = {
 
   update: (body: any) =>
     apiRequest<any>('POST', '/admin-settings', body, true),
+
+  requestEmailChange: (newEmail: string, password: string) =>
+    apiRequest<any>('POST', '/auth/email-change/request', { newEmail, password }, true),
+
+  verifyEmailChange: (challengeId: string, code: string) =>
+    apiRequest<any>('POST', '/auth/email-change/verify', { challengeId, code }, true),
 };
 
 // Seed

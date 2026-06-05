@@ -55,6 +55,14 @@ const pendingPasswordResets = new Map<string, {
   expiresAt: number;
   attempts: number;
 }>();
+const pendingEmailChanges = new Map<string, {
+  adminId: string;
+  currentEmail: string;
+  newEmail: string;
+  codeHash: string;
+  expiresAt: number;
+  attempts: number;
+}>();
 
 function hashVerificationCode(code: string) {
   return crypto.createHash('sha256').update(code).digest('hex');
@@ -133,6 +141,33 @@ async function sendPasswordResetEmail(email: string, code: string): Promise<void
 
   console.warn('[auth] Email provider is not configured. Set EMAIL_FROM and RESEND_API_KEY to send real email.');
   console.log(`[auth] Password reset code for ${email}: ${code}`);
+}
+
+async function sendEmailChangeCode(email: string, code: string): Promise<void> {
+  const from = process.env.EMAIL_FROM;
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const subject = 'ARYAVARTA admin email change code';
+  const text = `Your ARYAVARTA admin email change code is ${code}. It expires in 10 minutes. If you did not request this, change your password immediately.`;
+
+  if (from && resendApiKey) {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from, to: email, subject, text }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Email provider failed: ${errorBody}`);
+    }
+    return;
+  }
+
+  console.warn('[auth] Email provider is not configured. Set EMAIL_FROM and RESEND_API_KEY to send real email.');
+  console.log(`[auth] Email change code for ${email}: ${code}`);
 }
 
 function issueAdminSession(admin: { id: string; email: string }) {
@@ -367,6 +402,121 @@ app.post('/api/auth/reset-password', (req: Request, res: Response) => {
   } catch (e) {
     console.error('Error during password reset:', e);
     res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
+app.post('/api/auth/email-change/request', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const newEmail = String(req.body?.newEmail || '').trim().toLowerCase();
+    const password = String(req.body?.password || '');
+
+    if (!newEmail || !newEmail.includes('@')) {
+      res.status(400).json({ error: 'A valid new email address is required' });
+      return;
+    }
+    if (!password) {
+      res.status(400).json({ error: 'Current password is required' });
+      return;
+    }
+
+    const admin = db.prepare('SELECT id, email, password_hash FROM admins WHERE id = ?').get(user.id) as any;
+    if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
+    }
+    if (newEmail === String(admin.email).toLowerCase()) {
+      res.status(400).json({ error: 'Enter a different email address' });
+      return;
+    }
+
+    const duplicateAdmin = db.prepare('SELECT id FROM admins WHERE lower(email) = ? AND id <> ?').get(newEmail, admin.id);
+    if (duplicateAdmin) {
+      res.status(409).json({ error: 'This email is already used by another admin account' });
+      return;
+    }
+
+    const code = createVerificationCode();
+    const challengeId = uuid();
+    pendingEmailChanges.set(challengeId, {
+      adminId: admin.id,
+      currentEmail: admin.email,
+      newEmail,
+      codeHash: hashVerificationCode(code),
+      expiresAt: Date.now() + EMAIL_VERIFICATION_TTL_MS,
+      attempts: 0,
+    });
+
+    await sendEmailChangeCode(admin.email, code);
+
+    res.json({
+      data: {
+        challengeId,
+        email: maskEmail(admin.email),
+        expiresInSeconds: EMAIL_VERIFICATION_TTL_MS / 1000,
+      },
+    });
+  } catch (e) {
+    console.error('Error requesting admin email change:', e);
+    res.status(500).json({ error: 'Email change request failed' });
+  }
+});
+
+app.post('/api/auth/email-change/verify', requireAuth, (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const challengeId = String(req.body?.challengeId || '');
+    const code = String(req.body?.code || '').trim();
+    const challenge = pendingEmailChanges.get(challengeId);
+
+    if (!challengeId || !code) {
+      res.status(400).json({ error: 'Verification code is required' });
+      return;
+    }
+    if (!challenge || challenge.adminId !== user.id) {
+      res.status(400).json({ error: 'Email change session was not found' });
+      return;
+    }
+    if (Date.now() > challenge.expiresAt) {
+      pendingEmailChanges.delete(challengeId);
+      res.status(400).json({ error: 'Verification code expired. Please start again.' });
+      return;
+    }
+    if (challenge.attempts >= 5) {
+      pendingEmailChanges.delete(challengeId);
+      res.status(429).json({ error: 'Too many verification attempts. Please start again.' });
+      return;
+    }
+    if (hashVerificationCode(code) !== challenge.codeHash) {
+      challenge.attempts += 1;
+      res.status(401).json({ error: 'Invalid verification code' });
+      return;
+    }
+
+    const duplicateAdmin = db
+      .prepare('SELECT id FROM admins WHERE lower(email) = ? AND id <> ?')
+      .get(challenge.newEmail, challenge.adminId);
+    if (duplicateAdmin) {
+      pendingEmailChanges.delete(challengeId);
+      res.status(409).json({ error: 'This email is already used by another admin account' });
+      return;
+    }
+
+    db.exec('BEGIN');
+    try {
+      db.prepare('UPDATE admins SET email = ? WHERE id = ?').run(challenge.newEmail, challenge.adminId);
+      db.prepare('UPDATE admin_settings SET admin_email = ?, updated_at = ?').run(challenge.newEmail, now());
+      db.exec('COMMIT');
+    } catch (innerError) {
+      db.exec('ROLLBACK');
+      throw innerError;
+    }
+
+    pendingEmailChanges.delete(challengeId);
+    res.json({ data: issueAdminSession({ id: challenge.adminId, email: challenge.newEmail }) });
+  } catch (e) {
+    console.error('Error verifying admin email change:', e);
+    res.status(500).json({ error: 'Email change verification failed' });
   }
 });
 
@@ -652,7 +802,7 @@ app.get('/api/admin-settings', requireAuth, (req, res) => {
     res.json({
       data: settings ? {
         ...settings,
-        admin_email: settings.admin_email || admin?.email || '',
+        admin_email: admin?.email || '',
         profilePhoto: settings.profile_photo || '',
         emailNotifications: Boolean(settings.emailNotifications),
         pushNotifications: Boolean(settings.pushNotifications),
@@ -686,7 +836,6 @@ app.post('/api/admin-settings', requireAuth, (req, res) => {
     // Prepare sanitized data
     const profileName = String(body.profileName || '').slice(0, 255);
     const institute_name = String(body.institute_name || '').slice(0, 255);
-    const admin_email = String(body.admin_email || '').trim().slice(0, 255);
     const support_phone = String(body.support_phone || '').slice(0, 50);
     const profile_photo = String(body.profilePhoto || body.profile_photo || '');
     const emailNotifications = body.emailNotifications ? 1 : 0;
@@ -695,29 +844,12 @@ app.post('/api/admin-settings', requireAuth, (req, res) => {
     const twoFactorAuth = body.twoFactorAuth ? 1 : 0;
     const theme = ['light', 'dark', 'system'].includes(body.theme) ? body.theme : 'system';
 
-    if (!admin_email || !admin_email.includes('@')) {
-      res.status(400).json({ error: 'A valid admin email is required' });
-      return;
-    }
-
     const currentAdmin = db.prepare('SELECT id, email FROM admins WHERE id = ?').get(user.id) as any;
     if (!currentAdmin) {
       res.status(401).json({ error: 'Admin account not found' });
       return;
     }
-
-    const duplicateAdmin = db
-      .prepare('SELECT id FROM admins WHERE email = ? AND id <> ?')
-      .get(admin_email, currentAdmin.id);
-    if (duplicateAdmin) {
-      res.status(409).json({ error: 'This email is already used by another admin account' });
-      return;
-    }
-
-    const emailChanged = admin_email !== currentAdmin.email;
-    if (emailChanged) {
-      db.prepare('UPDATE admins SET email = ? WHERE id = ?').run(admin_email, currentAdmin.id);
-    }
+    const admin_email = currentAdmin.email;
 
     const existing = db.prepare('SELECT * FROM admin_settings LIMIT 1').get() as any;
 
@@ -745,7 +877,6 @@ app.post('/api/admin-settings', requireAuth, (req, res) => {
       );
 
       const updated = db.prepare('SELECT * FROM admin_settings WHERE id = ?').get(existing.id) as any;
-      const session = emailChanged ? issueAdminSession({ id: currentAdmin.id, email: admin_email }) : null;
       res.json({
         data: {
           ...updated,
@@ -754,8 +885,6 @@ app.post('/api/admin-settings', requireAuth, (req, res) => {
           pushNotifications: Boolean(updated.pushNotifications),
           weeklyReports: Boolean(updated.weeklyReports),
           twoFactorAuth: Boolean(updated.twoFactorAuth),
-          token: session?.token,
-          user: session?.user,
         },
       });
     } else {
@@ -783,7 +912,6 @@ app.post('/api/admin-settings', requireAuth, (req, res) => {
       );
 
       const created = db.prepare('SELECT * FROM admin_settings WHERE id = ?').get(id) as any;
-      const session = emailChanged ? issueAdminSession({ id: currentAdmin.id, email: admin_email }) : null;
       res.json({
         data: {
           ...created,
@@ -792,8 +920,6 @@ app.post('/api/admin-settings', requireAuth, (req, res) => {
           pushNotifications: Boolean(created.pushNotifications),
           weeklyReports: Boolean(created.weeklyReports),
           twoFactorAuth: Boolean(created.twoFactorAuth),
-          token: session?.token,
-          user: session?.user,
         },
       });
     }

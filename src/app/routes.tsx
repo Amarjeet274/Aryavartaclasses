@@ -5,6 +5,7 @@ import { ModelsPage } from './pages/ModelsPage';
 import { RoadmapPage } from './pages/RoadmapPage';
 import { FacultyApplication } from './pages/FacultyApplication';
 import { StudentEnrollment } from './pages/StudentEnrollment';
+import { SchoolPartnership } from './pages/SchoolPartnership';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AboutPage } from './pages/AboutPage';
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       },
       { path: 'faculty-application', Component: FacultyApplication },
       { path: 'student-enrollment', Component: StudentEnrollment },
+      { path: 'school-partnership', Component: SchoolPartnership },
       { path: '*', Component: LandingPage }
     ]
   },

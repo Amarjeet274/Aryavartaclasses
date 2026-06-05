@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router';
 import {
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { FloatingSchoolCube } from '../components/FloatingSchoolCube';
 
-import { Outlet } from 'react-router';
+import { Outlet, useLocation } from 'react-router';
 import { Navbar } from '../components/Navbar';
 
 // Brand colors
@@ -16,6 +16,25 @@ import { Navbar } from '../components/Navbar';
 // Gold:      #F5A623
 
 export function HomePage() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) return;
+
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+    };
+  }, [location.pathname, location.hash]);
+
   return (
     <div className="min-h-screen bg-white font-sans">
       <Navbar />
@@ -567,7 +586,7 @@ export function LandingPage() {
       </section>
 
       {/* ── Final CTA ── */}
-      <section id="partner" className="py-24 bg-gradient-to-br from-[#0A2540] to-[#1a4070]">
+      <section id="partner" className="scroll-mt-28 py-24 bg-gradient-to-br from-[#0A2540] to-[#1a4070]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -579,15 +598,15 @@ export function LandingPage() {
             <p className="text-xl text-white/70 mb-12">Transform education infrastructure into profitable business</p>
 
             <div className="grid sm:grid-cols-3 gap-6">
-              <a
-                href="#"
+              <Link
+                to="/school-partnership"
                 className="bg-white p-8 rounded-2xl hover:shadow-2xl hover:-translate-y-1 transition-all group border-2 border-transparent hover:border-[#F5A623]/30"
               >
                 <School className="w-12 h-12 text-[#F5A623] mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-[#0A2540] mb-2">Partner as School</h3>
                 <p className="text-gray-500 mb-4 text-sm">Monetize idle infrastructure</p>
-                <span className="text-[#F5A623] font-semibold group-hover:underline">Learn More →</span>
-              </a>
+                <span className="text-[#F5A623] font-semibold group-hover:underline">Apply Now →</span>
+              </Link>
 
               <Link
                 to="/faculty-application"

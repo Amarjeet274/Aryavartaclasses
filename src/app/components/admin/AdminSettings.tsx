@@ -2,7 +2,15 @@ import { useState, useEffect } from 'react';
 import { adminSettings } from '../../lib/api';
 import { applyAuthSession } from '../../lib/auth';
 import { toast } from 'sonner';
-import { Save, User, Mail, Bell, Shield, Camera, Loader2, ImagePlus } from 'lucide-react';
+import { Save, User, Mail, Bell, Shield, Camera, Loader2, ImagePlus, Lock, BadgeCheck } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
 
 export function AdminSettings({ 
   userEmail, 
@@ -15,6 +23,14 @@ export function AdminSettings({
 }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState(userEmail);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailChangeStep, setEmailChangeStep] = useState<'password' | 'code'>('password');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [emailCode, setEmailCode] = useState('');
+  const [emailChallengeId, setEmailChallengeId] = useState('');
+  const [maskedRegisteredEmail, setMaskedRegisteredEmail] = useState('');
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
   const [settings, setSettings] = useState({
     profileName: initialName || '',
     profilePhoto: '',
@@ -35,6 +51,7 @@ export function AdminSettings({
       const { data, error } = await adminSettings.get();
       if (!error && data) {
         setSettings(prev => ({ ...prev, ...data, admin_email: data.admin_email || userEmail }));
+        setRegisteredEmail(data.admin_email || userEmail);
       }
     } catch (e) {
       console.error(e);
@@ -49,15 +66,22 @@ export function AdminSettings({
       return;
     }
 
+    if (settings.admin_email.trim().toLowerCase() !== registeredEmail.trim().toLowerCase()) {
+      setEmailChangeStep('password');
+      setCurrentPassword('');
+      setEmailCode('');
+      setEmailChallengeId('');
+      setMaskedRegisteredEmail('');
+      setEmailDialogOpen(true);
+      return;
+    }
+
     setSaving(true);
     try {
-      const { data, error } = await adminSettings.update(settings);
+      const { error } = await adminSettings.update(settings);
       if (error) {
-        toast.error('Failed to save settings');
+        toast.error(error);
       } else {
-        if (data?.token && data?.user) {
-          applyAuthSession(data.token, data.user);
-        }
         toast.success('Settings saved successfully');
         onUpdate();
       }
@@ -65,6 +89,68 @@ export function AdminSettings({
       toast.error('An error occurred');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEmailChangeRequest = async () => {
+    if (!currentPassword) {
+      toast.error('Enter your current password');
+      return;
+    }
+
+    setEmailChangeLoading(true);
+    try {
+      const { data, error } = await adminSettings.requestEmailChange(
+        settings.admin_email.trim(),
+        currentPassword,
+      );
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      setEmailChallengeId(data.challengeId);
+      setMaskedRegisteredEmail(data.email);
+      setEmailCode('');
+      setEmailChangeStep('code');
+      toast.success('Verification code sent');
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  const handleEmailChangeVerify = async () => {
+    if (!/^\d{6}$/.test(emailCode)) {
+      toast.error('Enter the 6-digit verification code');
+      return;
+    }
+
+    setEmailChangeLoading(true);
+    try {
+      const { data, error } = await adminSettings.verifyEmailChange(emailChallengeId, emailCode);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      applyAuthSession(data.token, data.user);
+      const newEmail = data.user.email;
+      setRegisteredEmail(newEmail);
+      setSettings(prev => ({ ...prev, admin_email: newEmail }));
+      setEmailDialogOpen(false);
+
+      const { error: settingsError } = await adminSettings.update({
+        ...settings,
+        admin_email: newEmail,
+      });
+      if (settingsError) {
+        toast.error('Email changed, but other settings could not be saved');
+      } else {
+        toast.success('Email verified and settings saved');
+      }
+      onUpdate();
+    } finally {
+      setEmailChangeLoading(false);
     }
   };
 
@@ -286,6 +372,93 @@ export function AdminSettings({
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={emailDialogOpen}
+        onOpenChange={(open) => {
+          if (!emailChangeLoading) setEmailDialogOpen(open);
+        }}
+      >
+        <DialogContent className="bg-white border-slate-200 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#0A2540]">Verify Email Change</DialogTitle>
+            <DialogDescription>
+              {emailChangeStep === 'password'
+                ? `Confirm your password before changing the login email to ${settings.admin_email.trim()}.`
+                : `Enter the code sent to ${maskedRegisteredEmail}.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {emailChangeStep === 'password' ? (
+            <div className="space-y-2">
+              <label htmlFor="current-password" className="text-sm font-semibold text-[#0A2540]">
+                Current Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEmailChangeRequest();
+                  }}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A623] focus:border-transparent"
+                  autoComplete="current-password"
+                  disabled={emailChangeLoading}
+                  autoFocus
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <label htmlFor="email-change-code" className="text-sm font-semibold text-[#0A2540]">
+                Verification Code
+              </label>
+              <div className="relative">
+                <BadgeCheck className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  id="email-change-code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={emailCode}
+                  onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEmailChangeVerify();
+                  }}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-center text-lg tracking-[0.3em] focus:outline-none focus:ring-2 focus:ring-[#F5A623] focus:border-transparent"
+                  placeholder="000000"
+                  autoComplete="one-time-code"
+                  disabled={emailChangeLoading}
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setEmailDialogOpen(false)}
+              disabled={emailChangeLoading}
+              className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={emailChangeStep === 'password' ? handleEmailChangeRequest : handleEmailChangeVerify}
+              disabled={emailChangeLoading}
+              className="px-4 py-2 bg-[#0A2540] text-white rounded-lg text-sm font-semibold hover:bg-[#1a3f6f] disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {emailChangeLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {emailChangeStep === 'password' ? 'Send Code' : 'Verify and Change'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

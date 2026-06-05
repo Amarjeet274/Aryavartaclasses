@@ -1,9 +1,31 @@
 import { useState } from 'react';
-import { NavLink, Link } from 'react-router';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router';
 import { GraduationCap, LogIn, Menu, X } from 'lucide-react';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handlePartnerClick = () => {
+    setMobileMenuOpen(false);
+
+    if (location.pathname !== '/') {
+      navigate('/#partner');
+      return;
+    }
+
+    if (location.hash !== '#partner') {
+      navigate('/#partner');
+    }
+
+    window.requestAnimationFrame(() => {
+      document.getElementById('partner')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  };
 
   return (
     <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-7xl backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.1)] border border-white/50 rounded-2xl px-4 sm:px-6 py-3 bg-[#ffaa1973]">
@@ -57,12 +79,13 @@ export function Navbar() {
 
         {/* Right Actions */}
         <div className="hidden lg:flex items-center gap-3 shrink-0">
-          <a
-            href="/#partner"
+          <button
+            type="button"
+            onClick={handlePartnerClick}
             className="px-6 py-2.5 bg-[#0A2540] text-white text-sm font-bold rounded-xl hover:bg-[#0d2e54] transition-colors shadow-lg shadow-[#0A2540]/20"
           >
             Partner with Us
-          </a>
+          </button>
           <Link
             to="/admin/login"
             className="flex items-center gap-2 px-5 py-2.5 border border-white/50 bg-white/30 text-[#0A2540] text-sm font-bold rounded-xl hover:bg-[#0A2540] hover:text-white hover:border-[#0A2540] transition-all shadow-sm"
@@ -122,13 +145,13 @@ export function Navbar() {
             About
           </NavLink>
           <div className="pt-2 border-t border-white/30 flex flex-col gap-2 mt-2">
-            <Link
-              to="/#partner"
-              onClick={() => setMobileMenuOpen(false)}
+            <button
+              type="button"
+              onClick={handlePartnerClick}
               className="block w-full px-5 py-3 bg-[#0A2540] text-white font-semibold rounded-lg text-center hover:bg-[#0d2e54] transition-colors shadow-md"
             >
               Partner with Us
-            </Link>
+            </button>
             <Link
               to="/admin/login"
               onClick={() => setMobileMenuOpen(false)}
