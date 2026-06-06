@@ -527,7 +527,7 @@ app.get('/api/auth/me', requireAuth, (req: Request, res: Response) => {
 
 // ─── SCHOOLS ─────────────────────────────────────────────────────────────────
 
-app.get('/api/schools', (_req, res) => {
+app.get('/api/schools', requireAuth, (_req, res) => {
   try {
     const rows = db.prepare('SELECT * FROM schools ORDER BY created_at DESC').all();
     res.json({ data: rows });
@@ -580,7 +580,7 @@ app.delete('/api/schools/:id', requireAuth, (req: Request, res: Response) => {
 
 // ─── FACULTY ─────────────────────────────────────────────────────────────────
 
-app.get('/api/faculty', (_req, res) => {
+app.get('/api/faculty', requireAuth, (_req, res) => {
   try {
     const rows = db.prepare('SELECT * FROM faculty ORDER BY created_at DESC').all();
     res.json({ data: rows });
@@ -633,7 +633,7 @@ app.delete('/api/faculty/:id', requireAuth, (req: Request, res: Response) => {
 
 // ─── STUDENTS ────────────────────────────────────────────────────────────────
 
-app.get('/api/students', (_req, res) => {
+app.get('/api/students', requireAuth, (_req, res) => {
   try {
     const rows = db.prepare('SELECT * FROM students ORDER BY created_at DESC').all();
     res.json({ data: rows });
@@ -686,7 +686,7 @@ app.delete('/api/students/:id', requireAuth, (req: Request, res: Response) => {
 
 // ─── APPLICATIONS ────────────────────────────────────────────────────────────
 
-app.get('/api/applications', (_req, res) => {
+app.get('/api/applications', requireAuth, (_req, res) => {
   try {
     const rows = db.prepare('SELECT * FROM applications ORDER BY created_at DESC').all();
     res.json({ data: rows });
@@ -739,7 +739,7 @@ app.delete('/api/applications/:id', requireAuth, (req: Request, res: Response) =
 
 // ─── LEADS ───────────────────────────────────────────────────────────────────
 
-app.get('/api/leads', (_req, res) => {
+app.get('/api/leads', requireAuth, (_req, res) => {
   try {
     const rows = db.prepare('SELECT * FROM leads ORDER BY created_at DESC').all();
     res.json({ data: rows });
@@ -932,7 +932,7 @@ app.post('/api/admin-settings', requireAuth, (req, res) => {
 
 // ─── SEED ────────────────────────────────────────────────────────────────────
 
-app.post('/api/seed', (_req, res) => {
+app.post('/api/seed', requireAuth, (_req, res) => {
   try {
     const insertSchool = db.prepare(`
       INSERT OR IGNORE INTO schools (id, name, location, revenue_share, status, total_students, monthly_revenue)

@@ -72,7 +72,7 @@ async function apiRequest<T>(
 
 // Schools
 export const schools = {
-  list: () => apiRequest<any[]>('GET', '/schools'),
+  list: () => apiRequest<any[]>('GET', '/schools', undefined, true),
   create: (body: any) =>
     apiRequest<any>('POST', '/schools', body, true),
   update: (id: string, body: any) =>
@@ -83,7 +83,7 @@ export const schools = {
 
 // Faculty
 export const faculty = {
-  list: () => apiRequest<any[]>('GET', '/faculty'),
+  list: () => apiRequest<any[]>('GET', '/faculty', undefined, true),
   create: (body: any) =>
     apiRequest<any>('POST', '/faculty', body, true),
   update: (id: string, body: any) =>
@@ -94,7 +94,7 @@ export const faculty = {
 
 // Students
 export const students = {
-  list: () => apiRequest<any[]>('GET', '/students'),
+  list: () => apiRequest<any[]>('GET', '/students', undefined, true),
   create: (body: any) =>
     apiRequest<any>('POST', '/students', body, true),
   update: (id: string, body: any) =>
@@ -105,7 +105,7 @@ export const students = {
 
 // Applications
 export const applications = {
-  list: () => apiRequest<any[]>('GET', '/applications'),
+  list: () => apiRequest<any[]>('GET', '/applications', undefined, true),
   create: (body: any) =>
     apiRequest<any>('POST', '/applications', body),
   update: (id: string, body: any) =>
@@ -116,7 +116,7 @@ export const applications = {
 
 // Leads
 export const leads = {
-  list: () => apiRequest<any[]>('GET', '/leads'),
+  list: () => apiRequest<any[]>('GET', '/leads', undefined, true),
   create: (body: any) =>
     apiRequest<any>('POST', '/leads', body, true),
   update: (id: string, body: any) =>
@@ -142,9 +142,4 @@ export const adminSettings = {
 
 // Seed
 export const seed = () =>
-  fetch(`${BASE_URL}/seed`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  }).then(r => r.json());
+  apiRequest<any>('POST', '/seed', undefined, true);

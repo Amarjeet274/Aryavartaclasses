@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { ArrowLeft, GraduationCap, Upload, CheckCircle2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router';
 import { useState } from 'react';
+import { applications as appsApi } from '../lib/api';
 
 export function StudentEnrollment() {
   const [formData, setFormData] = useState({
@@ -23,6 +24,8 @@ export function StudentEnrollment() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const examOptions = [
     'JEE Main',
@@ -44,10 +47,37 @@ export function StudentEnrollment() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Student enrollment submitted:', formData);
-    setSubmitted(true);
+    setSubmitting(true);
+    setSubmitError('');
+
+    try {
+      const { error } = await appsApi.create({
+        name: formData.studentName,
+        email: formData.email,
+        phone: formData.phone,
+        type: 'student',
+        role_or_class: formData.currentClass || 'Student Applicant',
+        notes: [
+          formData.parentName && `Parent/Guardian: ${formData.parentName}`,
+          formData.stream && `Stream/Board: ${formData.stream}`,
+          formData.previousSchool && `School: ${formData.previousSchool}`,
+          formData.targetExam.length && `Target: ${formData.targetExam.join(', ')}`,
+          formData.preferredCenter && `Center: ${formData.preferredCenter}`,
+          formData.alternatePhone && `Alternate phone: ${formData.alternatePhone}`,
+          formData.address && `Address: ${formData.address}, ${formData.city} - ${formData.pincode}`,
+          formData.hearAbout && `Source: ${formData.hearAbout}`,
+        ].filter(Boolean).join(' | '),
+      });
+
+      if (error) throw new Error(error);
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -423,11 +453,18 @@ export function StudentEnrollment() {
 
             {/* Submit Button */}
             <div className="pt-6">
+              {submitError && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {submitError}
+                </div>
+              )}
               <button
                 type="submit"
-                className="w-full px-8 py-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all font-semibold text-lg shadow-lg hover:shadow-xl"
+                disabled={submitting}
+                className="w-full px-8 py-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all font-semibold text-lg shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Submit Enrollment
+                {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
+                {submitting ? 'Submitting...' : 'Submit Enrollment'}
               </button>
               <p className="text-sm text-muted-foreground text-center mt-4">
                 By submitting, you agree to our terms and conditions

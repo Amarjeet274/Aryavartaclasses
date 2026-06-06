@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   CheckCircle2, XCircle, Eye, Clock, Mail, Phone, BookOpen,
   Sparkles, RefreshCw, Loader2, MessageSquare, X, Search,
-  Bell, Zap,
+  Bell, Zap, Building2,
 } from 'lucide-react';
 import { applications as appsApi } from '../../lib/api';
 import { toast } from 'sonner';
@@ -12,7 +12,7 @@ interface Application {
   name: string;
   email: string;
   phone: string;
-  type: 'student' | 'faculty';
+  type: 'student' | 'faculty' | 'school';
   role_or_class: string;
   status: 'new' | 'reviewed' | 'approved' | 'rejected';
   created_at: string;
@@ -44,7 +44,7 @@ export function RealTimeApplications({ onCountChange }: Props) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'student' | 'faculty'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'student' | 'faculty' | 'school'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'reviewed' | 'approved' | 'rejected'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [notesModal, setNotesModal] = useState<{ id: string; notes: string } | null>(null);
@@ -185,9 +185,10 @@ export function RealTimeApplications({ onCountChange }: Props) {
             />
           </div>
           <div className="flex gap-2">
-            {(['all', 'student', 'faculty'] as const).map(f => (
+            {(['all', 'student', 'faculty', 'school'] as const).map(f => (
               <button key={f} onClick={() => setTypeFilter(f)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${typeFilter === f ? 'bg-[#0A2540] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                className={`px-4 py-2 rounded-xl text-[0px] font-semibold transition-all ${typeFilter === f ? 'bg-[#0A2540] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                <span className="text-sm">{f === 'all' ? 'All' : f === 'student' ? 'Students' : f === 'faculty' ? 'Faculty' : 'Schools'}</span>
                 {f === 'all' ? 'All' : f === 'student' ? '🎓 Students' : '👨‍🏫 Faculty'}
               </button>
             ))}
@@ -233,7 +234,14 @@ export function RealTimeApplications({ onCountChange }: Props) {
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${STATUS_STYLES[app.status]}`}>
                       {app.status.toUpperCase()}
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${app.type === 'student' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[0px] font-bold ${
+                      app.type === 'student'
+                        ? 'bg-blue-100 text-blue-700'
+                        : app.type === 'faculty'
+                          ? 'bg-violet-100 text-violet-700'
+                          : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      <span className="text-xs">{app.type === 'student' ? 'Student' : app.type === 'faculty' ? 'Faculty' : 'School'}</span>
                       {app.type === 'student' ? '🎓 Student' : '👨‍🏫 Faculty'}
                     </span>
                   </div>
@@ -290,12 +298,18 @@ export function RealTimeApplications({ onCountChange }: Props) {
                           </button>
                         </>
                       )}
-                      {app.status === 'approved' && (
+                      {app.status === 'approved' && app.type !== 'school' && (
                         <button onClick={() => convertApplication(app.id, app.type)}
                           className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-[#F5A623] to-[#E09512] text-white rounded-xl hover:opacity-90 transition-all text-sm font-semibold shadow-md">
                           <Sparkles className="w-4 h-4" />
                           Convert
                         </button>
+                      )}
+                      {app.status === 'approved' && app.type === 'school' && (
+                        <span className="flex items-center gap-1.5 px-3 py-2 bg-amber-100 text-amber-700 rounded-xl text-sm font-semibold">
+                          <Building2 className="w-4 h-4" />
+                          Partnership Lead
+                        </span>
                       )}
                       <button
                         onClick={() => setNotesModal({ id: app.id, notes: app.notes || '' })}

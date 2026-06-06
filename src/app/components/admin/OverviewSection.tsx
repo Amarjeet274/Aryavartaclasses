@@ -38,6 +38,7 @@ function timeAgo(dateStr: string) {
 export function OverviewSection({ onNavigate }: Props) {
   const [metrics, setMetrics] = useState({ totalStudents: 0, totalRevenue: 0, activeSchools: 0, totalFaculty: 0, newApplications: 0 });
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [feeHealth, setFeeHealth] = useState({ paid: 0, pending: 0, overdue: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchAll(); }, []);
@@ -58,6 +59,12 @@ export function OverviewSection({ onNavigate }: Props) {
       const newApplications = appData.filter((a: any) => a.status === 'new').length;
 
       setMetrics({ totalStudents: studentData.length, totalRevenue, activeSchools, totalFaculty: facultyData.length, newApplications });
+      const feeTotal = studentData.length || 1;
+      setFeeHealth({
+        paid: Math.round((studentData.filter((student: any) => student.fee_status === 'paid').length / feeTotal) * 100),
+        pending: Math.round((studentData.filter((student: any) => student.fee_status === 'pending').length / feeTotal) * 100),
+        overdue: Math.round((studentData.filter((student: any) => student.fee_status === 'overdue').length / feeTotal) * 100),
+      });
 
       // Build activity feed
       const activities: any[] = [
@@ -77,12 +84,6 @@ export function OverviewSection({ onNavigate }: Props) {
   const getDisplayValue = (key: string) => {
     if (key === 'totalRevenue') return `₹${(metrics.totalRevenue / 100000).toFixed(1)}L`;
     return String(metrics[key as keyof typeof metrics]);
-  };
-
-  const feeHealth = {
-    paid: 72,
-    pending: 20,
-    overdue: 8,
   };
 
   return (

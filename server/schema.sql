@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS faculty (
   name        TEXT NOT NULL,
   subject     TEXT NOT NULL,
   school      TEXT NOT NULL,
-  school_id   TEXT NOT NULL REFERENCES schools(id) ON DELETE SET NULL,
+  school_id   TEXT NOT NULL,
   rating      REAL NOT NULL DEFAULT 0,
   students    INTEGER NOT NULL DEFAULT 0,
   status      TEXT NOT NULL DEFAULT 'active',   -- 'active' | 'inactive'
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS students (
   name        TEXT NOT NULL,
   class       TEXT NOT NULL,
   school      TEXT NOT NULL,
-  school_id   TEXT NOT NULL REFERENCES schools(id) ON DELETE SET NULL,
+  school_id   TEXT NOT NULL,
   fee_status  TEXT NOT NULL DEFAULT 'pending',  -- 'paid' | 'pending' | 'overdue'
   amount      INTEGER NOT NULL DEFAULT 0,
   email       TEXT NOT NULL,
@@ -58,13 +58,13 @@ CREATE TABLE IF NOT EXISTS students (
   updated_at  TEXT
 );
 
--- Applications (student & faculty applicants from public forms)
+-- Applications (student, faculty, and school applicants from public forms)
 CREATE TABLE IF NOT EXISTS applications (
   id           TEXT PRIMARY KEY,
   name         TEXT NOT NULL,
   email        TEXT NOT NULL,
   phone        TEXT NOT NULL,
-  type         TEXT NOT NULL,  -- 'student' | 'faculty'
+  type         TEXT NOT NULL,  -- 'student' | 'faculty' | 'school'
   role_or_class TEXT NOT NULL,
   status       TEXT NOT NULL DEFAULT 'new',  -- 'new' | 'reviewed' | 'approved' | 'rejected'
   notes        TEXT NOT NULL DEFAULT '',
@@ -84,4 +84,20 @@ CREATE TABLE IF NOT EXISTS leads (
   notes      TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
+);
+
+-- Admin portal preferences and institute contact details
+CREATE TABLE IF NOT EXISTS admin_settings (
+  id                   TEXT PRIMARY KEY,
+  profileName          TEXT,
+  institute_name       TEXT,
+  admin_email          TEXT,
+  support_phone        TEXT,
+  profile_photo        TEXT,
+  emailNotifications   INTEGER NOT NULL DEFAULT 1,
+  pushNotifications    INTEGER NOT NULL DEFAULT 1,
+  weeklyReports        INTEGER NOT NULL DEFAULT 0,
+  twoFactorAuth        INTEGER NOT NULL DEFAULT 0,
+  theme                TEXT NOT NULL DEFAULT 'system',
+  updated_at           TEXT
 );

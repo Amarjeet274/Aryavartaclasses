@@ -8,16 +8,6 @@ import { schools as schoolsApi, students as studentsApi } from '../../lib/api';
 
 const PIE_COLORS = ['#0A2540', '#F5A623', '#10b981', '#8b5cf6', '#ef4444'];
 
-const MONTHLY_DATA = [
-  { month: 'Oct', gross: 1050000, net: 630000, school_share: 420000 },
-  { month: 'Nov', gross: 1625000, net: 975000, school_share: 650000 },
-  { month: 'Dec', gross: 1950000, net: 1170000, school_share: 780000 },
-  { month: 'Jan', gross: 2200000, net: 1320000, school_share: 880000 },
-  { month: 'Feb', gross: 2550000, net: 1530000, school_share: 1020000 },
-  { month: 'Mar', gross: 2875000, net: 1725000, school_share: 1150000 },
-  { month: 'Apr', gross: 3000000, net: 1800000, school_share: 1200000 },
-];
-
 const EXPENSES = [
   { category: 'Faculty Salaries', amount: 480000, pct: 26.7 },
   { category: 'Marketing & Enrollment', amount: 180000, pct: 10 },
@@ -56,6 +46,7 @@ export function RevenueTracking() {
     revenue: s.monthly_revenue || 0,
     students: s.total_students || 0,
     earning: ((s.monthly_revenue || 0) * s.revenue_share) / 100,
+    aryavarta: ((s.monthly_revenue || 0) * (100 - s.revenue_share)) / 100,
   }));
 
   const pieData = schoolBreakdown.filter(s => s.revenue > 0).map((s, i) => ({
@@ -79,10 +70,10 @@ export function RevenueTracking() {
       {/* Top Cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {[
-          { label: 'Gross Revenue', val: fmtL(totalMonthly || 3000000), sub: 'this month', icon: IndianRupee, gradient: 'from-[#0A2540] to-[#1a3f6f]', positive: true },
-          { label: 'School Share', val: fmtL(schoolShare || 1050000), sub: 'paid to schools', icon: School, gradient: 'from-[#F5A623] to-[#E09512]', positive: true },
-          { label: 'ARYAVARTA Gross', val: fmtL(aryavartaGross || 1950000), sub: 'before expenses', icon: TrendingUp, gradient: 'from-violet-500 to-violet-700', positive: true },
-          { label: 'Net Profit', val: fmtL(netProfit || 1050000), sub: '35% net margin', icon: TrendingUp, gradient: 'from-emerald-500 to-emerald-700', positive: netProfit >= 0 },
+          { label: 'Gross Revenue', val: fmtL(totalMonthly), sub: 'current database total', icon: IndianRupee, gradient: 'from-[#0A2540] to-[#1a3f6f]', positive: true },
+          { label: 'School Share', val: fmtL(schoolShare), sub: 'estimated at 35%', icon: School, gradient: 'from-[#F5A623] to-[#E09512]', positive: true },
+          { label: 'ARYAVARTA Gross', val: fmtL(aryavartaGross), sub: 'before expenses', icon: TrendingUp, gradient: 'from-violet-500 to-violet-700', positive: true },
+          { label: 'Estimated Net', val: fmtL(netProfit), sub: 'after cost assumptions', icon: TrendingUp, gradient: 'from-emerald-500 to-emerald-700', positive: netProfit >= 0 },
         ].map(({ label, val, sub, icon: Icon, gradient, positive }) => (
           <div key={label} className={`bg-gradient-to-br ${gradient} rounded-2xl p-6 text-white shadow-lg`}>
             <div className="flex items-start justify-between mb-4">
@@ -104,18 +95,17 @@ export function RevenueTracking() {
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Monthly trend */}
         <div className="lg:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <h2 className="font-bold text-[#0A2540] text-base mb-1">Monthly Revenue Breakdown</h2>
-          <p className="text-xs text-slate-500 mb-6">Gross, Net Profit & School Share</p>
+          <h2 className="font-bold text-[#0A2540] text-base mb-1">Current Revenue Distribution</h2>
+          <p className="text-xs text-slate-500 mb-6">Database values by school</p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={MONTHLY_DATA} barGap={2}>
+            <BarChart data={schoolBreakdown} barGap={2}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `₹${(v / 100000).toFixed(0)}L`} />
               <Tooltip formatter={(v: any) => fmtL(Number(v))} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
               <Legend />
-              <Bar dataKey="gross" fill="#e2e8f0" radius={[4, 4, 0, 0]} name="Gross Revenue" />
-              <Bar dataKey="school_share" fill="#F5A623" radius={[4, 4, 0, 0]} name="School Share" />
-              <Bar dataKey="net" fill="#0A2540" radius={[4, 4, 0, 0]} name="Net Profit" />
+              <Bar dataKey="earning" fill="#F5A623" radius={[4, 4, 0, 0]} name="School Share" />
+              <Bar dataKey="aryavarta" fill="#0A2540" radius={[4, 4, 0, 0]} name="ARYAVARTA Share" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -233,7 +223,7 @@ export function RevenueTracking() {
           </div>
           <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3">
             <span className="font-bold text-emerald-800">Estimated Net Profit</span>
-            <span className="text-xl font-bold text-emerald-600">{fmtL(netProfit || 1050000)}</span>
+            <span className="text-xl font-bold text-emerald-600">{fmtL(netProfit)}</span>
           </div>
         </div>
       </div>
