@@ -31,13 +31,13 @@ export function Navbar() {
     <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-7xl backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.1)] border border-white/50 rounded-2xl px-4 sm:px-6 py-3 bg-[#ffaa1973]">
       <div className="flex items-center justify-between">
         {/* Logo */}
-        <a href="/" className="flex items-center gap-2 shrink-0">
+        <Link to="/" className="flex items-center gap-2 shrink-0">
           
           <div className="w-10 h-10 bg-[#0A2540] rounded-xl flex items-center justify-center shadow-sm">
             <GraduationCap className="w-5 h-5 text-[#F5A623]" />
           </div>
           <span className="font-bold text-xl text-[#0A2540] tracking-wide drop-shadow-sm">ARYAVARTA</span>
-        </a>
+        </Link>
 
         {/* Desktop links */}
         <div className="hidden lg:flex items-center justify-center flex-1 mx-8">
