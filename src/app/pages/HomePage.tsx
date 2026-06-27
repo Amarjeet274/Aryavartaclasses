@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router';
 import {
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { FloatingSchoolCube } from '../components/FloatingSchoolCube';
 
-import { Outlet, useLocation } from 'react-router';
+import { Outlet } from 'react-router';
 import { Navbar } from '../components/Navbar';
 
 // Brand colors
@@ -16,27 +16,8 @@ import { Navbar } from '../components/Navbar';
 // Gold:      #F5A623
 
 export function HomePage() {
-  const location = useLocation();
-
-  useEffect(() => {
-    if (!location.hash) return;
-
-    let secondFrame = 0;
-    const firstFrame = window.requestAnimationFrame(() => {
-      secondFrame = window.requestAnimationFrame(() => {
-        const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    });
-
-    return () => {
-      window.cancelAnimationFrame(firstFrame);
-      window.cancelAnimationFrame(secondFrame);
-    };
-  }, [location.pathname, location.hash]);
-
   return (
-    <div className="min-h-screen bg-white font-sans">
+    <div className="min-h-screen bg-white font-sans overflow-x-hidden">
       <Navbar />
       <Outlet />
     </div>
@@ -195,7 +176,7 @@ export function LandingPage() {
             <p className="text-xl text-gray-500 max-w-3xl mx-auto">Revolutionary partnership model eliminating capex while maximizing trust and scale</p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-3 gap-8">
             <div className="bg-gradient-to-br from-[#0A2540] to-[#1a4070] p-10 rounded-2xl text-white">
               <h3 className="text-3xl font-bold mb-6">For Schools</h3>
               <ul className="space-y-4">
@@ -231,6 +212,24 @@ export function LandingPage() {
                 ))}
               </ul>
             </div>
+
+            <div className="bg-gradient-to-br from-[#1e40af] to-[#1e3a8a] p-10 rounded-2xl text-white">
+              <h3 className="text-3xl font-bold mb-6">For Students</h3>
+              <ul className="space-y-4">
+                {[
+                  'Top-tier faculty in familiar environment',
+                  'Zero travel time to coaching centers',
+                  'Safe and secure school campus',
+                  'Comprehensive study materials',
+                  'Regular assessments and analytics',
+                ].map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-3">
+                    <CheckCircle2 className="w-6 h-6 text-[#F5A623] flex-shrink-0 mt-0.5" />
+                    <span className="text-lg">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>
@@ -243,7 +242,7 @@ export function LandingPage() {
             <p className="text-xl text-gray-500">Clear division of responsibilities</p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-3 gap-8">
             <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
               <h3 className="text-2xl font-bold text-[#0A2540] mb-6 flex items-center gap-3">
                 <School className="w-8 h-8 text-[#F5A623]" />
@@ -275,6 +274,27 @@ export function LandingPage() {
                   { icon: Rocket, text: 'Marketing & admissions' },
                   { icon: BarChart3, text: 'Operations & analytics' },
                   { icon: BookOpen, text: 'Study materials & technology' },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <item.icon className="w-6 h-6 text-[#F5A623]" />
+                    <span className="text-gray-700 font-medium">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+              <h3 className="text-2xl font-bold text-[#0A2540] mb-6 flex items-center gap-3">
+                <Users className="w-8 h-8 text-[#F5A623]" />
+                Students Receive
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { icon: BookOpen, text: 'Premium competitive coaching' },
+                  { icon: Shield, text: 'Safe, known learning environment' },
+                  { icon: Target, text: 'Personalized doubt solving' },
+                  { icon: BarChart3, text: 'Performance tracking apps' },
+                  { icon: Award, text: 'Scholarships and rewards' },
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
                     <item.icon className="w-6 h-6 text-[#F5A623]" />
@@ -586,7 +606,7 @@ export function LandingPage() {
       </section>
 
       {/* ── Final CTA ── */}
-      <section id="partner" className="scroll-mt-28 py-24 bg-gradient-to-br from-[#0A2540] to-[#1a4070]">
+      <section id="partner" className="py-24 bg-gradient-to-br from-[#0A2540] to-[#1a4070]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -598,15 +618,15 @@ export function LandingPage() {
             <p className="text-xl text-white/70 mb-12">Transform education infrastructure into profitable business</p>
 
             <div className="grid sm:grid-cols-3 gap-6">
-              <Link
-                to="/school-partnership"
+              <a
+                href="#"
                 className="bg-white p-8 rounded-2xl hover:shadow-2xl hover:-translate-y-1 transition-all group border-2 border-transparent hover:border-[#F5A623]/30"
               >
                 <School className="w-12 h-12 text-[#F5A623] mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-[#0A2540] mb-2">Partner as School</h3>
                 <p className="text-gray-500 mb-4 text-sm">Monetize idle infrastructure</p>
-                <span className="text-[#F5A623] font-semibold group-hover:underline">Apply Now →</span>
-              </Link>
+                <span className="text-[#F5A623] font-semibold group-hover:underline">Learn More →</span>
+              </a>
 
               <Link
                 to="/faculty-application"
@@ -668,8 +688,8 @@ export function LandingPage() {
               <h4 className="font-bold mb-4 text-white">Contact</h4>
               <ul className="space-y-2 text-white/60 text-sm">
                 <li>info@aryavarta.edu</li>
-                <li>+91 0000000000</li>
-                <li>Uttar Pradesh, India</li>
+                <li>+91 98765 43210</li>
+                <li>Bangalore, India</li>
               </ul>
             </div>
           </div>
